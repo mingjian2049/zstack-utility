@@ -347,7 +347,9 @@ class LocalStoragePlugin(kvmagent.KvmAgent):
             DIR = os.path.dirname(path)
 
             TMPDIR = os.path.join('/home', USER, self.LOCAL_NOT_ROOT_USER_MIGRATE_TMP_PATH)
-            TMPFILE = os.path.join(TMPDIR, PATH)
+            logger.debug("TMPDIR is: %s" % TMPDIR)
+            TMPFILE = TMPDIR + '/' + PATH
+            logger.debug("TMPFILE is: %s" % TMPFILE)
 
             if cmd.dstUsername == 'root':
                 _, _, err = bash_progress_1(
@@ -355,11 +357,12 @@ class LocalStoragePlugin(kvmagent.KvmAgent):
                 if err:
                     raise err
             else:
-                _, _, err = bash_progress_1('rsync -av --progress --relative {{PATH}} --rsh="/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -p {{PORT}} -l {{USER}}" {{IP}}:/ 1>{{PFILE}}', _get_progress)
+                _, _, err = bash_progress_1('rsync -av --progress --relative {{PATH}} --rsh="/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -p {{PORT}} -l {{USER}}" {{IP}}:/{{TMPDIR}} 1>{{PFILE}}', _get_progress)
                 if err:
                     raise err
+                bash_errorout('/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -t -t -p {{PORT}} {{USER}}@{{IP}} "sudo mkdir -p {{DIR}}"')
                 bash_errorout(
-                    '/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -t -t -p {{PORT}} {{USER}}@{{IP}} "sudo mv {{TMPFILE}} {{PATH}}; rm -rf {{TMPDIR}}"')
+                    '/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -t -t -p {{PORT}} {{USER}}@{{IP}} "sudo mv {{TMPFILE}} {{PATH}}"')
             written += os.path.getsize(path)
             bash_errorout('/usr/bin/sshpass -p {{PASSWORD}} ssh -o StrictHostKeyChecking=no -p {{PORT}} {{USER}}@{{IP}} "/bin/sync {{PATH}}"')
             percent = int(round(float(written) / float(total) * (end - start) + start))
